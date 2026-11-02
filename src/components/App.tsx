@@ -53,8 +53,10 @@ export const App: FC = () => {
 
   const stateIndex = scene.states.findIndex((state) => state.id === stateId);
   const sceneMusic = useSceneMusic({ states: scene.states, stateIndex, isPlaying, timeInState: scrub?.stateId === stateId ? scrub.time : 0 });
+  // The scene's own stage when it declares one, a phone's upright frame for instance; otherwise the usual one.
+  const stage = scene.stage ?? constants.STAGE;
 
-  // The stage is always 1920×1080 and only scaled to fit, so a position tuned in a small window is
+  // The stage is 1920×1080 unless the scene says otherwise, and only scaled to fit, so a position tuned in a small window is
   // the same position in a full-size capture. The scale is worked out against the room left once the
   // panel has taken its own, and the box around the stage is then given the size the stage actually
   // appears at — a transform leaves the layout box at full size, which is what used to leave the panel
@@ -72,17 +74,17 @@ export const App: FC = () => {
       // the margin and the margin is whatever is left once the row of steps and the gap have taken
       // theirs. Worked out from the measured row, so it holds for a scene with two rows of steps too.
       if (isMarketing) {
-        const ratio = constants.STAGE.height / constants.STAGE.width;
+        const ratio = stage.height / stage.width;
         const margin = Math.max(0, (window.innerHeight - gap - stepsHeight - ratio * window.innerWidth) / (2 * (1 - ratio)));
 
-        setLayout({ margin, scale: (window.innerWidth - 2 * margin) / constants.STAGE.width });
+        setLayout({ margin, scale: (window.innerWidth - 2 * margin) / stage.width });
 
         return;
       }
 
       const availableHeight = containerRef.current.clientHeight - stepsHeight - gap;
 
-      setLayout({ margin: 0, scale: Math.min(containerRef.current.clientWidth / constants.STAGE.width, availableHeight / constants.STAGE.height) });
+      setLayout({ margin: 0, scale: Math.min(containerRef.current.clientWidth / stage.width, availableHeight / stage.height) });
     };
 
     const resizeObserver = new ResizeObserver(updateScale);
@@ -91,7 +93,7 @@ export const App: FC = () => {
     updateScale();
 
     return () => resizeObserver.disconnect();
-  }, [isRecording, isMarketing]);
+  }, [isRecording, isMarketing, stage]);
 
   // Playback: each state is held for exactly as long as it is held in the export, so what plays here is
   // the cut, not an impression of it.
@@ -163,7 +165,7 @@ export const App: FC = () => {
   useEffect(() => {
     window.__onioncut = {
       isReady: () => areFontsReady,
-      stage: constants.STAGE,
+      stage,
       marketingFrame: constants.MARKETING_FRAME,
       states: scene.states.map((state) => ({ id: state.id, hold: state.hold })),
       render: scene.render,
@@ -182,12 +184,12 @@ export const App: FC = () => {
   // Only the scene's own animations, never the preview's: the playhead and the tab colours animate too,
   // and finishing or seeking those would move the furniture instead of the picture.
   const stageAnimations = useCallback(() => {
-    const stage = document.querySelector('[data-stage]');
+    const stageElement = document.querySelector('[data-stage]');
 
     return document.getAnimations().filter((animation) => {
       const target = (animation.effect as KeyframeEffect | null)?.target;
 
-      return target instanceof Element && stage?.contains(target) === true;
+      return target instanceof Element && stageElement?.contains(target) === true;
     });
   }, []);
 
@@ -365,9 +367,9 @@ export const App: FC = () => {
           <Div
             data-stage
             className={['relative shrink-0 overflow-hidden', !isTransparent && 'bg-stage']}
-            style={{ width: constants.STAGE.width * layout.scale, height: constants.STAGE.height * layout.scale }}
+            style={{ width: stage.width * layout.scale, height: stage.height * layout.scale }}
           >
-            <Div className="absolute left-0 top-0 origin-top-left" style={{ width: constants.STAGE.width, height: constants.STAGE.height, transform: `scale(${layout.scale})` }}>
+            <Div className="absolute left-0 top-0 origin-top-left" style={{ width: stage.width, height: stage.height, transform: `scale(${layout.scale})` }}>
               <scene.Scene stateId={stateId} isTransparent={isTransparent} />
             </Div>
           </Div>
@@ -383,7 +385,7 @@ export const App: FC = () => {
                 stateId={stateId}
                 isPlaying={isPlaying}
                 isRecording={isRecording}
-                width={constants.STAGE.width * layout.scale}
+                width={stage.width * layout.scale}
                 stateRun={stateRun}
                 scrub={scrub}
                 onStateChange={handleStateChange}

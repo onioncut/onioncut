@@ -17,4 +17,7 @@ export type SceneDefinition = {
   // './assets/music.mp3'`). It plays along with the preview's timeline and is mixed under the full cut
   // when it is recorded; step clips stay silent, because the edit runs one track under all of them.
   music?: string;
+  // The stage the scene is laid out on and recorded at, when it is not the usual 1920×1080 — 1080×1920
+  // for a take of the video on its side, for a phone. Recorded at twice the pixel density like any other.
+  stage?: { width: number; height: number };
 };
