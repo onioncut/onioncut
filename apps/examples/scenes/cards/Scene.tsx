@@ -1,10 +1,10 @@
+import { Div, SceneComponentProps } from 'onioncut';
 import { FC } from 'react';
 import { StageCard } from './components/StageCard';
 import { constants } from './constants';
 import { cards } from './data/cards';
 import { CardTimingArgs } from './types/CardTimingArgs';
 import { CardTransformArgs } from './types/CardTransformArgs';
-import { Div, SceneComponentProps } from 'onioncut';
 import { SceneBackdrop } from '../backdrop/SceneBackdrop';
 
 // Every card is in the DOM in every state — the markup never changes, only transform, opacity, filter

@@ -12,7 +12,7 @@ page — open it, change a number, see it. The recorder then turns it into video
 and photographing the page one frame at a time. Why it works that way, and not like a screen recorder,
 is in [Why stop-motion](#why-stop-motion-not-a-screen-recorder).
 
-Two example scenes come with it under `examples/scenes/`, both drawn in CSS with no images, as
+Two example scenes come with it under `apps/examples/scenes/`, both drawn in CSS with no images, as
 something to copy from:
 
 | Scene         | Length | What it is                                                                    |
@@ -26,10 +26,10 @@ something to copy from:
 - **ffmpeg** on the `PATH` (`brew install ffmpeg`)
 - **Chrome, Chromium or Edge** installed. The recorder drives the browser already on the machine
   through `puppeteer-core` rather than downloading one of its own; the paths it looks in are
-  `CHROME_CANDIDATES` at the top of `src/cli/record.mjs`, and they are macOS paths — on Linux or
+  `CHROME_CANDIDATES` at the top of `packages/onioncut/src/cli/record.mjs`, and they are macOS paths — on Linux or
   Windows, change them.
 
-**Setting it up in another repository is written out in [`INSTRUCTIONS.md`](./INSTRUCTIONS.md)** —
+**Setting it up in another repository is written out in [`INSTRUCTIONS.md`](https://github.com/onioncut/onioncut/blob/main/INSTRUCTIONS.md)** —
 install, config, scenes, shared components, recording, and what catches people out. What follows here
 is the short version.
 
@@ -266,7 +266,7 @@ The frames also go into the encoder losslessly — PNG, not JPEG — so the pict
 ProRes, instead of twice.
 
 The one thing a screen recorder offers beyond this is 60 fps, and that is a constant here (`FPS` in
-`src/cli/record.mjs`), still deterministic. Because holds are free (below), 60 fps only doubles the
+`packages/onioncut/src/cli/record.mjs`), still deterministic. Because holds are free (below), 60 fps only doubles the
 frames in which something actually moves.
 
 **When a screen recorder is the right tool:** filming a real app — clicking through it, waiting on a
@@ -307,16 +307,16 @@ rounded against the timeline it is exactly 4.00s.
 
 ## Making it yours
 
-- **Start with [`BRAND.md`](./BRAND.md)** — the palette, type, surfaces and motion a scene is allowed to
+- **Start with [`BRAND.md`](https://github.com/onioncut/onioncut/blob/main/packages/onioncut/BRAND.md)** — the palette, type, surfaces and motion a scene is allowed to
   use. It ships describing the starter brand and carries a comment saying so; write your own in its
   place and delete the comment.
 - **The palette** is the project's own `tailwind.config.ts`, built on `onioncut/tailwind-preset`
   — `stage` is the paper the stage is made of, and it is the only colour the tool itself refers to by
   name.
-- **The background** is the project's, beside its scenes; `examples/scenes/backdrop/SceneBackdrop.tsx`
+- **The background** is the project's, beside its scenes; `apps/examples/scenes/backdrop/SceneBackdrop.tsx`
   is one drawn in CSS to copy from.
-- **The example scenes** are the package's, not the project's, and nothing has to be deleted to be rid
-  of them: a project sees only the folders its own `scenes` globs match.
+- **The example scenes** live in this repository's `apps/examples/` and are not in the npm package, so
+  a project has nothing to delete to be rid of them.
 - **The font** is loaded in `index.html` with `display=block`, never `swap`: a render must not
   photograph a fallback face while the real one loads.
 

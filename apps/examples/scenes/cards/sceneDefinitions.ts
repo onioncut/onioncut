@@ -1,6 +1,6 @@
+import { defineScenes } from 'onioncut';
 import { Scene } from './Scene';
 import { states } from './states';
-import { defineScenes } from 'onioncut';
 
 export const sceneDefinitions = defineScenes({
   id: 'cards',

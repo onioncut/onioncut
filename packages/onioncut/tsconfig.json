@@ -31,7 +31,6 @@
   },
   "include": [
     "src/**/*",
-    "examples/**/*",
     "bin/**/*",
     "tailwind.config.js",
     "tailwind.preset.js"

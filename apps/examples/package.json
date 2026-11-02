@@ -1,0 +1,19 @@
+{
+  "name": "@onioncut/examples",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "onioncut dev",
+    "build": "onioncut build",
+    "record": "onioncut record",
+    "tsc": "tsc --noEmit"
+  },
+  "dependencies": {
+    "onioncut": "workspace:*",
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "typescript": "^5"
+  }
+}

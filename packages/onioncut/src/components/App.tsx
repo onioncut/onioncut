@@ -1,13 +1,13 @@
 import { FC, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
+import { fontSpecs } from 'virtual:onioncut-fonts';
 import { SceneSidebar } from './SceneSidebar';
 import { StateSwitcher } from './StateSwitcher';
 import { constants } from '../constants';
 import { Div } from './Div';
+import { useSceneMusic } from '../hooks/useSceneMusic';
 import { findScene } from '../registry';
 import { ScrubPosition } from '../types/ScrubPosition';
-import { useSceneMusic } from '../hooks/useSceneMusic';
-import { fontSpecs } from 'virtual:onioncut-fonts';
 
 const urlParams = () => {
   return new URLSearchParams(window.location.search);
@@ -179,7 +179,7 @@ export const App: FC = () => {
           setStateRun((currentRun) => currentRun + 1);
         }),
     };
-  }, [areFontsReady, scene]);
+  }, [areFontsReady, scene, stage]);
 
   // Only the scene's own animations, never the preview's: the playhead and the tab colours animate too,
   // and finishing or seeking those would move the furniture instead of the picture.

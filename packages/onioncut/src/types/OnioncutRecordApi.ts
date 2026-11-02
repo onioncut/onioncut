@@ -20,6 +20,7 @@ export type OnioncutRecordApi = {
 
 // An interface, not a type: extending the global Window is only possible through declaration merging.
 declare global {
+  // eslint-disable-next-line no-restricted-syntax
   interface Window {
     __onioncut?: OnioncutRecordApi;
   }

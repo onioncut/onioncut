@@ -224,7 +224,7 @@ cut is around 6 GB.
 - Node 20+ and pnpm
 - **ffmpeg** on the `PATH` (`brew install ffmpeg`)
 - **Chrome, Chromium or Edge** installed. The recorder drives the browser already on the machine; the
-  paths it looks in are `CHROME_CANDIDATES` at the top of `src/cli/record.mjs`, and they are macOS
+  paths it looks in are `CHROME_CANDIDATES` at the top of `packages/onioncut/src/cli/record.mjs`, and they are macOS
   paths — on Linux or Windows, add the machine's own.
 - Port 5200 for the preview. The recorder takes 5201 or the next one free.
 

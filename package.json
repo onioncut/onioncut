@@ -1,55 +1,23 @@
 {
-  "name": "onioncut",
-  "version": "0.1.0",
-  "description": "Animated scenes built as a web page and rendered into 4K ProRes clips, frame by frame. Installed into a project; the scenes live there.",
+  "name": "onioncut-monorepo",
+  "private": true,
   "license": "MIT",
-  "type": "module",
   "scripts": {
-    "dev": "node ./bin/onioncut.mjs dev",
-    "build": "node ./bin/onioncut.mjs build",
-    "record": "node ./bin/onioncut.mjs record",
-    "tsc": "tsc --noEmit"
-  },
-  "dependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@vitejs/plugin-react": "^4.3.4",
-    "postcss": "^8.4.49",
-    "puppeteer-core": "^24.1.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "tailwindcss": "^4.3.3",
-    "vite": "^6.0.7"
+    "dev": "pnpm --filter @onioncut/examples run dev",
+    "record": "pnpm --filter @onioncut/examples run record",
+    "tsc": "pnpm -r run tsc",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "pnpm lint && pnpm tsc && changeset publish && git push --follow-tags"
   },
   "devDependencies": {
-    "@types/node": "^22.15.17",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "typescript": "^5"
+    "@changesets/cli": "^2.31.1",
+    "@typescript-eslint/parser": "^8.46.0",
+    "eslint": "^9.37.0",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-react-hooks": "^5.2.0"
   },
-  "exports": {
-    ".": "./src/api.ts",
-    "./tailwind-preset": {
-      "types": "./tailwind.preset.d.ts",
-      "default": "./tailwind.preset.js"
-    },
-    "./package.json": "./package.json",
-    "./client": {
-      "types": "./client.d.ts"
-    }
-  },
-  "bin": {
-    "onioncut": "./bin/onioncut.mjs"
-  },
-  "files": [
-    "BRAND.md",
-    "CLAUDE.md",
-    "README.md",
-    "bin",
-    "client.d.ts",
-    "index.html",
-    "src",
-    "!src/tailwind.entry.css",
-    "tailwind.preset.d.ts",
-    "tailwind.preset.js"
-  ]
+  "packageManager": "pnpm@9.15.9"
 }

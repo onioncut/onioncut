@@ -1,0 +1,5 @@
+packages:
+  # The one published package: the tool itself.
+  - 'packages/*'
+  # Private, never published: the example scenes and the website.
+  - 'apps/*'

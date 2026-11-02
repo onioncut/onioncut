@@ -1,4 +1,4 @@
 {
-  "scenes": ["examples/scenes/*"],
+  "scenes": ["scenes/*"],
   "tailwind": "tailwind.config.js"
 }

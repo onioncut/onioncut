@@ -2,4 +2,7 @@ dist
 node_modules
 output
 .DS_Store
-src/tailwind.entry.css
+packages/onioncut/src/tailwind.entry.css
+# Copied from the repository root by the package's prepack, so npm shows them.
+packages/onioncut/README.md
+packages/onioncut/LICENSE

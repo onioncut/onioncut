@@ -12,36 +12,45 @@ scene is never a file named almost right.
 
 This is the tool, not a project that uses it. It is installed into a project — the scenes are written
 there, under whatever folders that project's `onioncut.config.json` names, and the clips land
-where each scene's `render.outputPath` says. Work here is work on the tool; `examples/scenes/` is the
+where each scene's `render.outputPath` says. Work here is work on the tool; `apps/examples/scenes/` is the
 only place in this repository where a scene lives, and it exists to be copied from.
 
 ## Where things live
 
-- `src/api.ts` — everything a project can import. A scene writes `from 'onioncut'` and nothing
+- The repository is a pnpm workspace. `packages/onioncut/` is the one package published to npm;
+  everything under `apps/` is private and never published. `apps/examples/` uses the tool exactly the
+  way a project does — its own `package.json`, `onioncut.config.json` and Tailwind config — so
+  `pnpm dev` and `pnpm record` at the root run there.
+- `apps/site/` — the website. Static, private, not part of the package.
+- `.changeset/` — releases. A change to `packages/onioncut` comes with a changeset; how a release is
+  cut is in [`.changeset/README.md`](./.changeset/README.md) and `/prepare-release`.
+- `.claude/guidelines/` — how code is written here; `.claude/commit-rules.md` — the scopes and the
+  checks that run before every commit, the leak check among them.
+- `packages/onioncut/src/api.ts` — everything a project can import. A scene writes `from 'onioncut'` and nothing
   deeper, so the inside can be rearranged without breaking a video recorded a year ago. Adding to this
   file is a decision; reaching around it is a bug.
-- `src/cli/` — the command line: reading the project's config, building the Vite config around it, the
+- `packages/onioncut/src/cli/` — the command line: reading the project's config, building the Vite config around it, the
   virtual module that collects the scenes, and the recorder.
-- `bin/onioncut.mjs` — `dev`, `build`, `record`.
-- `src/components/` — the tool itself: the app shell, the step timeline, the sidebar, `Div`. Nothing
+- `packages/onioncut/bin/onioncut.mjs` — `dev`, `build`, `record`.
+- `packages/onioncut/src/components/` — the tool itself: the app shell, the step timeline, the sidebar, `Div`. Nothing
   that belongs to one particular video goes here.
-- `src/types/` — the types the tool itself is built on (`SceneDefinition`, `SceneStateDefinition`, …),
+- `packages/onioncut/src/types/` — the types the tool itself is built on (`SceneDefinition`, `SceneStateDefinition`, …),
   one per file.
-- `src/constants.ts` — only what the tool itself needs: the stage, the marketing frame, the panel gap.
-- `examples/scenes/` — the example videos, every one of them in a folder of the same shape
+- `packages/onioncut/src/constants.ts` — only what the tool itself needs: the stage, the marketing frame, the panel gap.
+- `apps/examples/scenes/` — the example videos, every one of them in a folder of the same shape
   (`sceneDefinitions.ts`, `states.ts`, `constants.ts`, `Scene.tsx`, then `components/`, `types/`,
   `data/`, `assets/`). The shape is spelled out in the README; keep the four root files named the same
   in every scene, so any scene is read the same way. A project's own scenes have this shape too,
   wherever it keeps them.
-- `examples/scenes/backdrop/` is not a scene — it is the background those scenes share. What one set
+- `apps/examples/scenes/backdrop/` is not a scene — it is the background those scenes share. What one set
   of scenes shares sits **beside** them, inside the folder they are in; what videos in _different_
   folders share goes in a folder the project lists as `shared`, imported by that folder's own name:
   `#shared/Watermark`. Tailwind scans the scene folders, their parent and those — and nothing further
   out, so a shared component kept anywhere else has its classes purged and the scene records without
   it.
-- `output/` — what a render of the examples produces. Gitignored. Never commit a clip. A project
+- `apps/examples/output/` — what a render of the examples produces. Gitignored. Never commit a clip. A project
   renders wherever its scenes say, which for a long-form video is that video's own folder.
-- [`BRAND.md`](./BRAND.md) — how a scene is allowed to look: the palette, the type, the surfaces, the
+- [`BRAND.md`](./packages/onioncut/BRAND.md) — how a scene is allowed to look: the palette, the type, the surfaces, the
   motion. **Read it before drawing anything.** If it still carries the `BRAND-NOT-SET-UP` comment at
   the top, nobody has replaced the starter brand yet: say so, and offer to write it from the project's
   real colours before building a scene rather than quietly drawing in someone else's palette.
@@ -63,7 +72,7 @@ only place in this repository where a scene lives, and it exists to be copied fr
   same `filter` re-blurs everything on every frame and the scene stutters.
 - **Every value a scene is tuned by lives in its `constants.ts`** — durations, distances, sizes.
   Nothing is timed anywhere else.
-- **Colours, type, radii and easing come from [`BRAND.md`](./BRAND.md)**, never from taste. One easing
+- **Colours, type, radii and easing come from [`BRAND.md`](./packages/onioncut/BRAND.md)**, never from taste. One easing
   curve across every scene is what makes a set of videos look like a set.
 
 ## Rendering a video
@@ -123,7 +132,7 @@ bug worth fixing until you know why it is there.
 
 - **Tailwind 4, configured from CSS, which is why the entry stylesheet is generated.** `@config` and
   `@source` take paths, and the paths — the project's config, its scene folders — are only known once
-  the project's config has been read. So the CLI writes `src/tailwind.entry.css` on every run, with an
+  the project's config has been read. So the CLI writes `packages/onioncut/src/tailwind.entry.css` on every run, with an
   absolute `@config` and one `@source` per folder, and `main.tsx` imports it before `index.css`. It is
   gitignored and never edited by hand.
 - **That is also why `vite build` on its own does not work any more**, and nothing should be made to
@@ -258,7 +267,7 @@ fallback that produces a worse file is worse than an error.
 - **`ffmpeg` or `ffprobe` not on the PATH** — nothing can be encoded or checked.
   `brew install ffmpeg` on macOS, the distribution's package on Linux.
 - **"No Chrome found"** — the recorder drives the browser already on the machine rather than
-  downloading one. It looks in `CHROME_CANDIDATES` at the top of `src/cli/record.mjs`, and those paths
+  downloading one. It looks in `CHROME_CANDIDATES` at the top of `packages/onioncut/src/cli/record.mjs`, and those paths
   are macOS ones. Offer to install Chrome, or to add the machine's own path to that list — do not
   switch the project to full `puppeteer` to dodge it.
 - **`node_modules` missing or out of date** — `pnpm install`. If the package manager itself is not

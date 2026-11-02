@@ -1,5 +1,5 @@
-import { FC } from 'react';
 import { Div } from 'onioncut';
+import { FC } from 'react';
 
 // The paper every scene stands on, drawn rather than photographed: a warm sheet, a sun and two soft
 // hills. It is not a scene of its own — no sceneDefinitions.ts — so the registry walks past it.

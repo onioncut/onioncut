@@ -1,8 +1,8 @@
+import { Div, SceneComponentProps } from 'onioncut';
 import { FC } from 'react';
 import { constants } from './constants';
 import { stateIndex } from './states';
 import { PartPlacement } from './types/PartPlacement';
-import { Div, SceneComponentProps } from 'onioncut';
 import { SceneBackdrop } from '../backdrop/SceneBackdrop';
 
 // The scene that shows what `--transparent` is for: a badge over nothing, recorded with its alpha

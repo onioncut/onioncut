@@ -1,0 +1,59 @@
+{
+  "name": "onioncut",
+  "version": "0.1.0",
+  "description": "Animated scenes built as a web page and rendered into 4K ProRes clips, frame by frame. Installed into a project; the scenes live there.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/onioncut/onioncut.git",
+    "directory": "packages/onioncut"
+  },
+  "type": "module",
+  "scripts": {
+    "tsc": "tsc --noEmit",
+    "prepack": "cp ../../README.md ../../LICENSE ."
+  },
+  "dependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "postcss": "^8.4.49",
+    "puppeteer-core": "^24.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwindcss": "^4.3.3",
+    "vite": "^6.0.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.17",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "typescript": "^5"
+  },
+  "exports": {
+    ".": "./src/api.ts",
+    "./tailwind-preset": {
+      "types": "./tailwind.preset.d.ts",
+      "default": "./tailwind.preset.js"
+    },
+    "./package.json": "./package.json",
+    "./client": {
+      "types": "./client.d.ts"
+    }
+  },
+  "bin": {
+    "onioncut": "./bin/onioncut.mjs"
+  },
+  "files": [
+    "BRAND.md",
+    "LICENSE",
+    "README.md",
+    "CHANGELOG.md",
+    "bin",
+    "client.d.ts",
+    "index.html",
+    "src",
+    "!src/tailwind.entry.css",
+    "tailwind.preset.d.ts",
+    "tailwind.preset.js"
+  ]
+}
