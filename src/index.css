@@ -1,0 +1,33 @@
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Figtree', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Recording mode hides every piece of preview chrome, so a screen capture of the tab is the video. */
+body[data-recording='1'] {
+  overflow: hidden;
+  background: black;
+}
+
+/* The playhead running across one step of the timeline in a recording. The positions come in as variables,
+   because they are measured from the laid-out tabs. */
+@keyframes playhead-run {
+  from {
+    transform: translate(var(--playhead-from), var(--playhead-top));
+  }
+  to {
+    transform: translate(var(--playhead-to), var(--playhead-top));
+  }
+}
+
+/* A transparent take keeps nothing behind the scene, so what the scene leaves empty stays empty. */
+body[data-transparent='1'] {
+  background: transparent;
+}
