@@ -1,5 +1,4 @@
 import { execFileSync, spawn } from 'node:child_process';
-import { cpus } from 'node:os';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, renameSync, rmSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { extname, join, resolve } from 'node:path';
@@ -72,10 +71,6 @@ const parseArgs = (parsed) => {
     // Write this run somewhere else, leaving the scene's own folder — and whatever edit is linked to it
     // — alone.
     out: parsed.out ?? null,
-    // How many clips are recorded at once. Each one is a page photographing at 4K and an ffmpeg
-    // encoding it, so what runs out first is memory, not cores — four is what a laptop takes without
-    // swapping, and --workers raises or lowers it.
-    workers: Number(parsed.workers ?? Math.max(1, Math.min(4, cpus().length - 1))),
     // Which ProRes encoder writes the file. 'software' is what every clip so far came from; 'hardware'
     // is the chip's own, which is faster and does not produce the same bytes.
     encoder: parsed.encoder ?? 'software',
@@ -91,32 +86,6 @@ const resolveOutputPath = ({ outputPath, projectRoot }) => {
   }
 
   return resolve(projectRoot, outputPath);
-};
-
-// Runs the jobs over a fixed number of workers, each taking the next one as it frees up. A job is one
-// page and one ffmpeg, so the count is what the machine can hold at 4K rather than what the scene has.
-const runPool = async ({ jobs, workers, run }) => {
-  let next = 0;
-  const take = () => (next < jobs.length ? { job: jobs[next], index: next++ } : null);
-
-  await Promise.all(
-    Array.from({ length: Math.max(1, Math.min(workers, jobs.length)) }, async () => {
-      for (let taken = take(); taken !== null; taken = take()) {
-        await run(taken.job);
-      }
-    }),
-  );
-};
-
-// The parts of the full cut, joined without being decoded. ProRes is all-intra — every frame is a key
-// frame — so a join at a frame boundary is exact, and the result is the same file a single pass would
-// have written.
-const concatSegments = ({ segments, outPath, listPath }) => {
-  // The concat demuxer's own quoting, not the shell's and not JSON's: single quotes, with any single
-  // quote in a path closed, escaped and reopened.
-  writeFileSync(listPath, segments.map((segment) => `file '${segment.replaceAll("'", String.raw`'\''`)}'`).join('\n'));
-
-  execFileSync('ffmpeg', ['-y', '-v', 'error', '-f', 'concat', '-safe', '0', '-i', listPath, '-c', 'copy', outPath]);
 };
 
 // Compared by what decodes rather than by file bytes: identical frames — and the same music under them,
@@ -367,15 +336,11 @@ export const runRecord = async ({ config, flags }) => {
 
     const measuredFrames = await readFrames();
     const frame = args.marketing ? measuredFrames.marketingFrame : measuredFrames.stage;
-    // Every clip gets a page of its own. One page carried through a full cut and then the step clips
-    // died around its six-hundredth screenshot with a detached frame — Chrome's renderer does not
-    // survive that many in one tab. A fresh page also means no clip inherits anything from the last.
-    // Opened straight at a state, rather than at the first one and stepped forward. A scene is a pure
-    // function of its state — the same markup for the same id — so the pose reached by opening at a
-    // state is the pose reached by walking to it, and the transition out of it is created the same way.
-    // Walking there cost one style recalc per state passed, which over a scene of sixty-five beats is
-    // most of the render.
-    const openScenePage = async ({ stateId } = {}) => {
+    // Every clip gets a page of its own, opened at the scene's first state. A clip never starts on a page
+    // opened straight at a later state: a scene carries things from one state into the next — where the
+    // cursor last clicked, a menu item still lit — and only a page that has been through the states before
+    // has them, exactly as the preview does.
+    const openScenePage = async () => {
       const page = await browser.newPage();
 
       page.on('error', (error) => console.error(`  page crashed: ${error.message}`));
@@ -383,7 +348,7 @@ export const runRecord = async ({ config, flags }) => {
 
       await page.setViewport({ width: frame.width, height: frame.height, deviceScaleFactor: scale });
       await page.goto(
-        `${baseUrl}/?scene=${args.scene}&recording=1${stateId ? `&state=${encodeURIComponent(stateId)}` : ''}${args.marketing ? '&marketing=1' : ''}${args.transparent ? '&transparent=1' : ''}`,
+        `${baseUrl}/?scene=${args.scene}&recording=1${args.marketing ? '&marketing=1' : ''}${args.transparent ? '&transparent=1' : ''}`,
         { waitUntil: 'networkidle0' },
       );
       await page.waitForFunction(() => window.__onioncut?.isReady() === true, { timeout: 30_000 });
@@ -538,11 +503,21 @@ export const runRecord = async ({ config, flags }) => {
       return `${Math.round((Date.now() - startedAt) / 1000)}s`;
     };
 
-    // The page opens on the state before this step, which is where the clip starts, and the step's own
+    // Steps through the states before `index` without photographing them, each one landed before the
+    // next starts, so the page stands where the scene stands once they have all played.
+    const walkTo = async ({ page, index }) => {
+      for (const state of states.slice(1, index)) {
+        await startState({ page, stateId: state.id });
+        await page.evaluate(() => window.__recordedAnimations.forEach((animation) => animation.finish()));
+      }
+    };
+
+    // The page walks to the state before this step, which is where the clip starts, and the step's own
     // transition is then the first thing that happens on it.
     const recordStepClip = async ({ state, index }) => {
-      const page = await openScenePage({ stateId: index === 0 ? undefined : states[index - 1].id });
+      const page = await openScenePage();
 
+      await walkTo({ page, index });
       await startState({ page, stateId: state.id });
 
       const frames = Math.round(((await transitionEnd({ page, stageOnly: true })) / 1000 + args.stepHold) * constants.FPS);
@@ -582,53 +557,34 @@ export const runRecord = async ({ config, flags }) => {
 
     await firstPage.close();
 
-    // The full cut, one state at a time and several at once. A state starts from the pose the state
-    // before it ended in, and a page opened straight at that state is already in that pose — which is
-    // what makes the parts independent, and is also how a step clip finds its start. The parts are
-    // then joined without being decoded.
+    // The full cut on one page, one state after the other, as the preview plays it — each state starts
+    // from wherever the one before it left everything.
     if (variants.fullCut) {
-      const segmentsDir = mkdtempSync(join(tmpdir(), 'onioncut-parts-'));
+      const page = await openScenePage();
+      const ffmpegProcess = startEncoder(join(renderedDir, fullName));
       let doneFrames = 0;
 
-      const recordSegment = async ({ state, index }) => {
-        const page = await openScenePage({ stateId: index === 0 ? undefined : states[index - 1].id });
-
-        const segmentPath = join(segmentsDir, `${String(index).padStart(4, '0')}.${constants.EXTENSION}`);
-        const ffmpegProcess = startEncoder(segmentPath);
-
+      for (const state of states) {
         await recordState({ page, state, ffmpegProcess });
-        await closeEncoder(ffmpegProcess);
-        await page.close();
 
         doneFrames += state.frames;
 
         console.log(`  full ${doneFrames}/${totalFrames} frames · ${(doneFrames / ((Date.now() - startedAt) / 1000)).toFixed(1)} fps · ${elapsed()}`);
-      };
+      }
 
-      try {
-        await runPool({ jobs: states.map((state, index) => ({ state, index })), workers: args.workers, run: recordSegment });
+      await closeEncoder(ffmpegProcess);
+      await page.close();
 
-        concatSegments({
-          segments: states.map((_, index) => join(segmentsDir, `${String(index).padStart(4, '0')}.${constants.EXTENSION}`)),
-          outPath: join(renderedDir, fullName),
-          listPath: join(segmentsDir, 'parts.txt'),
-        });
-
-        if (music) {
-          await addMusic({ videoPath: join(renderedDir, fullName), musicUrl: new URL(music, `${baseUrl}/`).href, seconds: totalFrames / constants.FPS });
-          console.log('  music laid under the full cut');
-        }
-      } finally {
-        rmSync(segmentsDir, { recursive: true, force: true });
+      if (music) {
+        await addMusic({ videoPath: join(renderedDir, fullName), musicUrl: new URL(music, `${baseUrl}/`).href, seconds: totalFrames / constants.FPS });
+        console.log('  music laid under the full cut');
       }
     }
 
     if (variants.stepClips) {
-      await runPool({
-        jobs: states.map((state, index) => ({ state, index })),
-        workers: args.workers,
-        run: recordStepClip,
-      });
+      for (const [index, state] of states.entries()) {
+        await recordStepClip({ state, index });
+      }
     }
 
     // A variant the scene turned off is one it no longer has, so its files are stale like a removed

@@ -216,7 +216,6 @@ Both `--port=5300` and `--port 5300` work, and an unknown flag is refused rather
 | `--hold`        | each state's own | Overrides every state's declared hold                          |
 | `--step-hold`   | `2`              | Seconds a step clip holds after its last transition            |
 | `--record-port` | `5201`           | The recorder's own server; the next free port if taken         |
-| `--workers`     | `4`              | How many clips to record at once; memory is the limit, not cores |
 
 A run writes what the scene's `variants` turn on: the full cut, and one clip per step — its
 transition, then 2 s of the finished state. Clips that did not change are left untouched, a changed
@@ -244,8 +243,8 @@ H.264 `.mp4` in `<outDir>/marketing/`, as tall as its row of steps makes it.
   without it, with no error.
 - **The step timeline is built for a handful of steps.** A video of sixty beats wraps it into a dozen
   rows; it scrolls instead of pushing the stage off the window, but it is cramped.
-- **A render photographs the page one frame at a time**, which is why the result is exact. Several
-  clips are recorded at once (`--workers`, four by default); each one is a browser page at 4K and an
-  ffmpeg, so what runs out first is memory.
+- **A render photographs the page one frame at a time**, which is why the result is exact. The clips
+  are recorded one after another, the full cut on a single page playing the states in order, as the
+  preview does.
 - **Tuning happens in the browser, never in exports.** Open the scene and change a number. An
   exported video cannot be pointed at.

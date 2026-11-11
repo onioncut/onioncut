@@ -198,8 +198,10 @@ bug worth fixing until you know why it is there.
 - **Chrome's virtual-time policy is the obvious way to stop the clock and the wrong one.** With the
   clock stopped the compositor stops producing frames and `page.screenshot` times out part-way through
   a render, at around frame 90. The transitions are paused and seeked instead.
-- **A page dies at around its six-hundredth screenshot** with a detached frame. Hence a fresh page per
-  clip, and a step clip reaching its start by stepping through the earlier states unrecorded.
+- **A page once died at around its six-hundredth screenshot** with a detached frame, when the full cut
+  and every step clip ran on one page. Each clip has a page of its own now; a full cut of 912
+  screenshots records on one without trouble. Should it come back on a longer scene, the way out is a
+  fresh page that walks to where the last one stopped, never one opened straight at a state.
 - **`setState` has to run inside `flushSync`.** The recorder catches the new transitions the moment the
   state changes; a normal `setState` commits a frame later, by which time they are already running.
 - **`document.getAnimations()` is what forces the style recalc** that creates the transitions. Calling
@@ -211,10 +213,11 @@ bug worth fixing until you know why it is there.
   timing, so the same scene renders differently from one run to the next and the clip already in an
   edit quietly changes length. So the animations are caught twice: straight away, because a
   transition shorter than a frame would otherwise be over and gone, and again after two frames.
-- **Reach a state by opening the page on it, never by stepping through the ones before it.** A scene
-  is a pure function of its state, so the pose is the same either way — but walking there leaves the
-  earlier states' animations around, and the measurement of how long the step lasts then picks them
-  up. That is how one clip came out 5.9s in one run and 3.4s in the next.
+- **Reach a state by walking through the ones before it, never by opening the page on it.** A scene
+  is not a pure function of its state: it carries things from one state into the next — where the
+  cursor last clicked, a menu item still lit — and a page opened straight at a state has none of them,
+  so the clip jumps where it starts. Every state walked through is finished before the next one
+  starts, so none of its animations is left around to be counted into how long the step lasts.
 - **Animations from the state being left are `finish()`ed, never rewound.** Rewinding plays the old
   state backwards underneath the new one.
 - **Before the first frame:** decode every image, await `document.fonts.ready`, then wait another
@@ -224,21 +227,13 @@ bug worth fixing until you know why it is there.
 - **Clips are compared by the hash of their decoded frames, not by file bytes**, which is what makes an
   unchanged clip detectable and leaves an edit's links intact.
 
-### Recording several things at once
+### One clip at a time
 
-- **Every clip is independent, which is the whole reason this can be parallel.** A step clip already
-  reached its start by stepping through the states before it without photographing them; the full cut
-  is recorded the same way, one state per part, and the parts are joined afterwards. So a state never
-  depends on having been _played_ through — only on the pose the state before it ends in.
-- **The parts of the full cut are joined with `-c copy` and that is exact**, because ProRes is
-  all-intra: every frame is a key frame, so a cut at a frame boundary loses nothing and re-encodes
-  nothing. Check it by pulling the frame at a join out of the cut and the same frame out of that
-  step's own clip — they are the same picture.
-- **The concat demuxer has its own quoting**, neither the shell's nor JSON's: `file '<path>'`, with a
-  single quote in a path closed, escaped and reopened. A JSON-quoted path is read literally, quotes
-  and all, and resolved against the list file's folder.
-- **`--workers` is bounded by memory, not cores.** Each worker is a page photographing at 4K and an
-  ffmpeg encoding it.
+- **The full cut is recorded on one page, state after state, as the preview plays it.** It was once cut
+  into a part per state, each recorded on its own page opened at the state before it and all of them
+  at once, then joined. Every join was a page that had never played the states before it, and every
+  one of them could jump: a cursor where nothing had moved it, a menu without the item the cursor had
+  lit. Faster, and wrong in a way no check catches reliably — so clips are recorded one after another.
 
 ### Verifying a render
 

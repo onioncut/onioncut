@@ -235,7 +235,6 @@ why the steps do not add up to the full cut and are not joined into it.
 | `--marketing`   | off                 | Record the framed view into `<outDir>/marketing`, as `.mp4`       |
 | `--transparent` | off                 | Keep the alpha channel, for laying over footage                  |
 | `--only`        | —                   | Render only this step's clip, by state id                        |
-| `--workers`     | `4`                 | How many clips to record at once                                 |
 | `--out`         | the scene's own     | Write this run elsewhere, deleting nothing — to check a render   |
 | `--record-port` | `5201`              | The recorder's own preview server; the next free port if taken   |
 

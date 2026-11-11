@@ -22,7 +22,6 @@ Recording:
   --marketing           The framed view, as .mp4 into <outDir>/marketing
   --out=<dir>           Write this run somewhere else, leaving the scene's own folder alone
   --record-port=<n>     The recorder's own preview server (default 5201, next free if taken)
-  --workers=<n>         How many clips to record at once (default 4, or fewer cores)
   --encoder=<which>     software (default) or hardware, the chip's own ProRes encoder
 
 Everything else is passed to the command: see --scene, --only, --transparent, --marketing.`;
@@ -65,7 +64,7 @@ const KNOWN_FLAGS = {
   new: ['out', 'group', 'help'],
   dev: ['config', 'port', 'host', 'help'],
   build: ['config', 'help'],
-  record: ['config', 'scene', 'only', 'hold', 'step-hold', 'marketing', 'transparent', 'out', 'record-port', 'workers', 'encoder', 'help'],
+  record: ['config', 'scene', 'only', 'hold', 'step-hold', 'marketing', 'transparent', 'out', 'record-port', 'encoder', 'help'],
 };
 
 const rejectUnknownFlags = ({ command, flags }) => {
