@@ -10,6 +10,9 @@ export type StateSwitcherProps = {
   stateId: string;
   isPlaying: boolean;
   isRecording: boolean;
+  // A marketing take: the steps are drawn large, sized by the MARKETING_STEP_* constants, so they still read
+  // once the video is shrunk into a post.
+  isMarketing: boolean;
   // The row spans exactly the stage above it, so the timeline reads as the timeline of that picture.
   width: number;
   // Counts every step the recorder starts, so the playhead runs again even when the step it is asked for is
@@ -29,7 +32,11 @@ const DRAG_THRESHOLD = 4;
 // The whole point of the preview: build one state until it is right, then step to the next. Feedback
 // is given against a state — "the iPad sits too low in 3" — never against a timestamp. The row is laid out
 // as a timeline: every step is as wide as it is long, a playhead runs across it, and it can be dragged.
-export const StateSwitcher: FC<StateSwitcherProps> = ({ scene, stateId, isPlaying, isRecording, width, stateRun, scrub, onStateChange, onScrub }) => {
+export const StateSwitcher: FC<StateSwitcherProps> = ({ scene, stateId, isPlaying, isRecording, isMarketing, width, stateRun, scrub, onStateChange, onScrub }) => {
+  const markerHeight = isMarketing ? constants.MARKETING_PLAYHEAD_MARKER_HEIGHT : constants.PLAYHEAD_MARKER_HEIGHT;
+  // The playhead is drawn for the preview; a marketing take scales it up along with its room above the row
+  const markerScale = markerHeight / constants.PLAYHEAD_MARKER_HEIGHT;
+
   // The state the progress belongs to is kept alongside it. Without that, the first render after
   // playback moves on still carries the previous state's progress, and the playhead jumps to the end of
   // the step that just started before running from its beginning.
@@ -171,7 +178,7 @@ export const StateSwitcher: FC<StateSwitcherProps> = ({ scene, stateId, isPlayin
   const lastRowTop = Math.max(0, ...tabBoxes.map((tabBox) => tabBox.top));
   const isWrapped = new Set(tabBoxes.map((tabBox) => tabBox.top)).size > 1;
   // The playhead sits on the row of the step it belongs to, its marker in the space just above that row.
-  const playheadTop = activeTab.top - constants.PLAYHEAD_MARKER_HEIGHT;
+  const playheadTop = activeTab.top - markerHeight;
 
   const isScrubbed = !isPlaying && scrub?.stateId === stateId;
   const fraction = isScrubbed ? (hold === 0 ? 0 : scrub.time / hold) : isPlaying && progress.stateId === stateId ? progress.value : 0;
@@ -182,14 +189,14 @@ export const StateSwitcher: FC<StateSwitcherProps> = ({ scene, stateId, isPlayin
   // back across a whole row to reach a step that starts a new one.
   const playheadStyle = isRecording
     ? {
-        height: activeTab.height + constants.PLAYHEAD_MARKER_HEIGHT,
+        height: activeTab.height + markerHeight,
         '--playhead-from': `${activeTab.left}px`,
         '--playhead-to': `${activeTab.left + activeTab.width}px`,
         '--playhead-top': `${playheadTop}px`,
         animation: `playhead-run ${hold}ms linear both`,
       }
     : {
-        height: activeTab.height + constants.PLAYHEAD_MARKER_HEIGHT,
+        height: activeTab.height + markerHeight,
         transform: `translate(${activeTab.left + activeTab.width * fraction}px, ${playheadTop}px)`,
       };
 
@@ -199,14 +206,14 @@ export const StateSwitcher: FC<StateSwitcherProps> = ({ scene, stateId, isPlayin
     <Div
       ref={rowRef}
       className={['relative shrink-0 select-none font-sans', !isRecording && 'cursor-ew-resize']}
-      style={{ width, paddingTop: constants.PLAYHEAD_MARKER_HEIGHT }}
+      style={{ width, paddingTop: markerHeight }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
     >
       {/* The same gap between tabs as between rows, and a row gap that leaves room for the playhead's marker. */}
-      <Div className="flex flex-wrap justify-center" style={{ gap: constants.PLAYHEAD_MARKER_HEIGHT + 4 }}>
+      <Div className="flex flex-wrap justify-center" style={{ gap: markerHeight + 4 * markerScale }}>
         {scene.states.map((state, index) => (
           <button
             key={state.id}
@@ -217,10 +224,17 @@ export const StateSwitcher: FC<StateSwitcherProps> = ({ scene, stateId, isPlayin
             // A drag that ended on this tab is not a click on it: the scrub has already said where to be.
             onClick={() => !dragRef.current?.isDragging && onStateChange(state.id)}
             title={`${state.label} · ${state.hold}s`}
+            // A marketing take follows the light, quiet timeline of a product video: white tabs with a thin
+            // border and the label alone, the active one only a shade stronger — a row of heavy dark blocks
+            // outweighs the picture above it.
             className={[
-              'min-w-0 overflow-hidden rounded-lg border transition-colors',
-              state.id === stateId && 'border-gray-400 bg-gray-800 text-white',
-              state.id !== stateId && 'border-gray-800 bg-gray-900 text-gray-400 hover:border-gray-600',
+              'min-w-0 overflow-hidden border transition-colors',
+              !isMarketing && 'rounded-lg',
+              !isMarketing && state.id === stateId && 'border-gray-400 bg-gray-800 text-white',
+              !isMarketing && state.id !== stateId && 'border-gray-800 bg-gray-900 text-gray-400 hover:border-gray-600',
+              isMarketing && 'rounded-xl',
+              isMarketing && state.id === stateId && 'border-gray-400 bg-gray-100 text-gray-900',
+              isMarketing && state.id !== stateId && 'border-gray-300 bg-white text-gray-600',
             ]
               .filter(Boolean)
               .join(' ')}
@@ -230,13 +244,23 @@ export const StateSwitcher: FC<StateSwitcherProps> = ({ scene, stateId, isPlayin
             style={{ flex: `${isWrapped && tabBoxes[index]?.top === lastRowTop ? 0 : state.hold} 1 0px`, minWidth: 'max-content' }}
           >
             {/* The step's number comes from where it sits, never from its label, so renumbering a scene is
-                impossible to get wrong. Every tab uses the same type size and keeps its label on one line. */}
-            <Div className="pointer-events-none flex items-center justify-center gap-2 whitespace-nowrap px-3 py-2 text-[13px]">
-              <Div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-gray-950 text-[11px] tabular-nums text-gray-300">
-                {index + 1}
+                impossible to get wrong. Every tab uses the same type size and keeps its label on one line. A
+                marketing take shows the label alone — the numbers are for talking about a step while tuning it. */}
+            {isMarketing ? (
+              <Div
+                className="pointer-events-none flex items-center justify-center whitespace-nowrap font-medium"
+                style={{ height: constants.MARKETING_STEP_HEIGHT, paddingInline: constants.MARKETING_STEP_FONT_SIZE * 0.75, fontSize: constants.MARKETING_STEP_FONT_SIZE }}
+              >
+                {state.label}
               </Div>
-              <Div>{state.label}</Div>
-            </Div>
+            ) : (
+              <Div className="pointer-events-none flex items-center justify-center gap-2 whitespace-nowrap px-3 py-2 text-[13px]">
+                <Div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-gray-950 text-[11px] tabular-nums text-gray-300">
+                  {index + 1}
+                </Div>
+                <Div>{state.label}</Div>
+              </Div>
+            )}
           </button>
         ))}
       </Div>
@@ -246,8 +270,14 @@ export const StateSwitcher: FC<StateSwitcherProps> = ({ scene, stateId, isPlayin
           scrubbed — standing at the start of a step it would read as something to drag, and it is not. */}
       {(isPlaying || isRecording || isScrubbed) && (
         <Div key={isRecording ? `${stateId}-${stateRun}` : 'playhead'} aria-hidden className="pointer-events-none absolute left-0 top-0 will-change-transform" style={playheadStyle}>
-          <Div className="absolute left-0 top-0 size-0 -translate-x-1/2 border-x-[7px] border-t-[9px] border-x-transparent border-t-white" />
-          <Div className="absolute bottom-0 left-0 top-2 w-0.5 -translate-x-1/2 bg-white shadow-[0_0_0_1px_rgb(3,7,18)]" />
+          <Div
+            className={['absolute left-0 top-0 size-0 -translate-x-1/2 border-x-transparent', isMarketing ? 'border-t-gray-900' : 'border-t-white']}
+            style={{ borderLeftWidth: 7 * markerScale, borderRightWidth: 7 * markerScale, borderTopWidth: 9 * markerScale }}
+          />
+          <Div
+            className={['absolute bottom-0 left-0 -translate-x-1/2', isMarketing ? 'bg-gray-900' : 'bg-white shadow-[0_0_0_1px_rgb(3,7,18)]']}
+            style={{ top: 8 * markerScale, width: 2 * markerScale }}
+          />
         </Div>
       )}
     </Div>

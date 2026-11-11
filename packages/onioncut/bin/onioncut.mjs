@@ -19,7 +19,7 @@ Recording:
   --scene=<key>         Which scene, as <folder>-<scene>
   --only=<state>        Re-cut one step
   --transparent         Keep the alpha channel
-  --marketing           The framed view, onto the desktop
+  --marketing           The framed view, as .mp4 into <outDir>/marketing
   --out=<dir>           Write this run somewhere else, leaving the scene's own folder alone
   --record-port=<n>     The recorder's own preview server (default 5201, next free if taken)
   --workers=<n>         How many clips to record at once (default 4, or fewer cores)

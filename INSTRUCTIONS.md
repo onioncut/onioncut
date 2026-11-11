@@ -62,6 +62,10 @@ for `tsconfig.json`. It never edits a file that exists.
     "videos/*/animations/*"
   ],
 
+  // Optional. Where renders land, relative to this file; `output` when left out. A scene's clips go
+  // to <outDir>/<folder>-<scene>/ unless the scene names an outputPath of its own. Gitignore it.
+  "outDir": "output",
+
   // Optional. Folders of components the videos share. A scene's own neighbours are scanned anyway;
   // this is for what videos in different folders have in common. Each folder is imported by its own
   // name: tools/onioncut/shared is `#shared`.
@@ -167,15 +171,18 @@ the scene by (`?scene=`), what the recorder takes (`--scene=`), and what its cli
 
 ### Where the clips go
 
-Declared by the scene, not by the command line:
+Into `<outDir>/<folder>-<scene>/`, unless the scene names a folder of its own — a long video keeping
+its clips beside its script:
 
 ```ts
 render: {
-  // Relative to the root of the project; `~` and absolute paths are taken as they are.
+  // Optional. Relative to the root of the project; `~` and absolute paths are taken as they are.
   outputPath: 'videos/my-video/sources',
   variants: { fullCut: true, stepClips: true }
 }
 ```
+
+The recorder ends by listing every file it wrote by its full path, then `Saved to <folder>`.
 
 ## Shared components
 
@@ -205,7 +212,7 @@ Both `--port=5300` and `--port 5300` work, and an unknown flag is refused rather
 | `--only`        | —                | Render only this step's clip, by state id. Deletes nothing     |
 | `--out`         | the scene's own  | Write this run elsewhere, deleting nothing — to check a render |
 | `--transparent` | off              | Keep the alpha channel, for laying over footage                |
-| `--marketing`   | off              | The framed view of the tool in use, onto the desktop           |
+| `--marketing`   | off              | The framed view, as `.mp4` into `<outDir>/marketing`           |
 | `--hold`        | each state's own | Overrides every state's declared hold                          |
 | `--step-hold`   | `2`              | Seconds a step clip holds after its last transition            |
 | `--record-port` | `5201`           | The recorder's own server; the next free port if taken         |
@@ -217,7 +224,8 @@ one is written over the existing file so an edit keeps its link, and a step the 
 is removed. Never move or rename an `animation-` file by hand; re-run the recorder.
 
 **Every render is `.mov`, 3840 × 2160, ProRes 4444, and there is no way to go lower.** A four-minute
-cut is around 6 GB.
+cut is around 6 GB. The one exception is `--marketing`: a take made to be posted, so a silent 1920-wide
+H.264 `.mp4` in `<outDir>/marketing/`, as tall as its row of steps makes it.
 
 ## What it needs on the machine
 

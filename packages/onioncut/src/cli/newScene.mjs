@@ -52,9 +52,9 @@ export const sceneDefinitions = defineScenes({
       title: '${titleOf(sceneId)}',
       states,
       Scene,
-      render: {
+      render: {${outputPath ? `
         // Relative to the root of the project; \`~\` and absolute paths are taken as they are.
-        outputPath: '${outputPath}',
+        outputPath: '${outputPath}',` : ''}
         variants: { fullCut: true, stepClips: true },
       },
     },
@@ -98,7 +98,7 @@ export const newScene = ({ cwd, scenePath, outputPath, group }) => {
 
   mkdirSync(dir, { recursive: true });
 
-  for (const [name, contents] of Object.entries(files({ sceneId, groupId, outputPath: outputPath ?? `${relative(projectRoot, resolve(dir, '..'))}/output` }))) {
+  for (const [name, contents] of Object.entries(files({ sceneId, groupId, outputPath }))) {
     writeFileSync(join(dir, name), contents);
     console.log(`  written    ${relative(projectRoot, join(dir, name))}`);
   }

@@ -1,8 +1,9 @@
 import { SceneRenderVariants } from './SceneRenderVariants';
 
 export type SceneRenderDefinition = {
-  // Where the clips land. `~` and absolute paths are taken as they are; a relative path is resolved from
-  // the root of the project, so a scene names its folder under output/.
-  outputPath: string;
+  // Optional. Where the clips land when not in the project's `<outDir>/<folder>-<scene>/` — a long video
+  // keeping its clips beside its script. `~` and absolute paths are taken as they are; a relative path is
+  // resolved from the root of the project.
+  outputPath?: string;
   variants: SceneRenderVariants;
 };

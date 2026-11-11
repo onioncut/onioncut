@@ -54,7 +54,10 @@ is the short version.
 {
   // Globs naming the scene FOLDERS, `*` and `**` both work. A scene is a folder with a
   // sceneDefinitions.ts in it; anything else matched is ignored.
-  "scenes": [".claude/long-videos/*/animations/*"],
+  "scenes": ["videos/*/animations/*"],
+  // Optional. Where renders land, relative to this file; `output` when left out. A scene goes to
+  // <outDir>/<folder>-<scene>/ unless it names an outputPath of its own.
+  "outDir": "output",
   // Optional. Left out, the scenes are drawn in the tool's own starter palette. TypeScript is fine,
   // here and in whatever it imports: a config Node cannot load is handed to Tailwind's own loader.
   "tailwind": "tailwind.config.ts",
@@ -180,9 +183,11 @@ pnpm record --scene=lower-third-lower-third --transparent
 pnpm record --scene=cards-cards --marketing
 ```
 
-**Where a render lands is the scene's own `outputPath`** — the example scenes name a folder under
-`output/`, which is gitignored and can be deleted whole without thinking about what else might be in
-it. `~` and absolute paths are taken as they are; a relative one is resolved from the project root.
+**Where a render lands is `<outDir>/<folder>-<scene>/`** — `outDir` is the project's, `output` when
+the config leaves it out, gitignored and deletable whole without thinking about what else might be in
+it. A scene that names a `render.outputPath` of its own goes there instead; `~` and absolute paths are
+taken as they are, a relative one is resolved from the project root. The run ends by listing every file
+by its full path and `Saved to <folder>`.
 
 Each run writes what the scene's `variants` turn on:
 
@@ -227,7 +232,7 @@ why the steps do not add up to the full cut and are not joined into it.
 | `--scene`       | `cards-cards`       | Which video to record, by `<folder>-<scene>`                     |
 | `--hold`        | each state's own    | Overrides every state's declared hold                            |
 | `--step-hold`   | `2`                 | Seconds a step clip holds after its last transition              |
-| `--marketing`   | off                 | Record the framed view onto the desktop, `…-marketing.mov`       |
+| `--marketing`   | off                 | Record the framed view into `<outDir>/marketing`, as `.mp4`       |
 | `--transparent` | off                 | Keep the alpha channel, for laying over footage                  |
 | `--only`        | —                   | Render only this step's clip, by state id                        |
 | `--workers`     | `4`                 | How many clips to record at once                                 |
@@ -290,9 +295,12 @@ entirely under your control, so their clock can be stopped.
   reaches its starting point by stepping through the states before it, unrecorded.
 - **`--marketing` records the tool, not just the scene.** The stage keeps its frame and the row of
   steps stays under it, the playhead running across the active step. It writes a single
-  `animation-<folder>-<scene>-marketing.mov` onto the desktop and no step clips, because nobody cuts this one. The frame is
-  **1920 × 1200**, not 1080: a 16:9 stage with a row of steps beneath it cannot sit in a 16:9 frame
-  with the same margin on every side — the arithmetic comes out negative.
+  `animation-<folder>-<scene>-marketing.mp4` into `<outDir>/marketing/` and no step clips, because nobody cuts this one.
+  It is made to be posted, so it is 1920 wide at 1× and H.264 without sound — what X takes as it is. It is
+  `MARKETING_WIDTH` wide with `MARKETING_PADDING` around everything, and as tall as its steps make it: the
+  recorder lays the page out at that width and measures it, so a scene whose steps wrap onto three rows
+  gives a taller video than one that fits on one. The steps are large on purpose —
+  `MARKETING_STEP_HEIGHT` and `MARKETING_STEP_FONT_SIZE` — so they still read in a timeline on a phone.
 
 Tried and dropped:
 

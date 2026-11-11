@@ -12,7 +12,7 @@ scene is never a file named almost right.
 
 This is the tool, not a project that uses it. It is installed into a project — the scenes are written
 there, under whatever folders that project's `onioncut.config.json` names, and the clips land
-where each scene's `render.outputPath` says. Work here is work on the tool; `apps/examples/scenes/` is the
+where that project's `outDir` (or a scene's own `render.outputPath`) says. Work here is work on the tool; `apps/examples/scenes/` is the
 only place in this repository where a scene lives, and it exists to be copied from.
 
 ## Where things live
@@ -83,11 +83,10 @@ only place in this repository where a scene lives, and it exists to be copied fr
   pnpm record --scene=<folder>-<scene>
   ```
 
-  It writes what the scene declares in its `render` — where, and which variants:
+  It writes what the scene declares in its `render` — which variants, and optionally where:
 
   ```ts
   render: {
-    outputPath: 'output/cards',
     variants: { fullCut: true, stepClips: true },
   },
   ```
@@ -97,8 +96,11 @@ only place in this repository where a scene lives, and it exists to be copied fr
   - `stepClips` — `animation-<folder>-<scene>-step-<n>-<state>.mov`, one clip per step: its transition,
     then **2 s** of the finished state
 
-  `outputPath` takes `~` and absolute paths as they are; a relative one is resolved from the project
-  root. The file name and the key the preview and the recorder open the scene by (`?scene=`,
+  Without an `outputPath` the clips go to `<outDir>/<folder>-<scene>/`, `outDir` being the project's
+  (`onioncut.config.json`, `output` when left out). A scene that names an `outputPath` — a long video
+  keeping its clips beside its script — goes there instead; `~` and absolute paths are taken as they
+  are, a relative one is resolved from the project root. The recorder ends by printing every file it
+  wrote by its full path and `Saved to <folder>`; read the folder from there rather than working it out. The file name and the key the preview and the recorder open the scene by (`?scene=`,
   `--scene=`) both come from the folder's `id` and the scene's `id`: `<folder>-<scene>`. A variant the
   scene turns off is treated like a removed step: its files are removed on the next run.
 
@@ -110,13 +112,22 @@ only place in this repository where a scene lives, and it exists to be copied fr
   link, and removes only the steps the scene no longer has. Just re-run it.
 - Re-render one step with `--only=<state>`. It updates that step's clip and deletes nothing.
 - **`--out=<dir>` sends one run somewhere else** and deletes nothing, for checking a render without
-  touching the folder an edit is already linked to. The scene's own `outputPath` is where the cut
+  touching the folder an edit is already linked to. The scene's own folder is where the cut
   comes from; a test render never goes there.
 - **`--marketing` is a different video, not a setting of the same one.** It records the framed view —
-  stage in its frame, row of steps underneath — and writes a single `animation-<folder>-<scene>-marketing.mov`
-  onto the desktop and no step clips. Use it when the ask is about showing the tool; never for the cut itself.
+  stage in its frame, row of steps underneath — and writes a single `animation-<folder>-<scene>-marketing.mp4`
+  into `<outDir>/marketing/` and no step clips. Use it when the ask is about showing the tool; never for the cut itself.
+- **A marketing take is sized by constants, never by hand.** It is `MARKETING_WIDTH` wide, with
+  `MARKETING_PADDING` around everything and `MARKETING_STEPS_GAP` between the stage and the steps; the
+  steps are drawn large (`MARKETING_STEP_HEIGHT`, `MARKETING_STEP_FONT_SIZE`) so they read once the video
+  is shrunk into a post. Its height is not set anywhere — the recorder lays the page out at that width,
+  asks it how tall it came out and shoots exactly that, so more rows of steps make a taller video. Tune
+  the constants; never pin a height in a scene.
 - **Every render is `.mov`, 4K, at maximum quality — transparent or not. Never offer or add a way to go
-  lower, and never produce `.mp4`.** 3840 × 2160, ProRes 4444, colour at full resolution.
+  lower, and never produce `.mp4`.** 3840 × 2160, ProRes 4444, colour at full resolution. **The one
+  exception is `--marketing`, fixed and not an option:** a marketing take is made to be posted, so it is
+  always 1920 wide at 1× and H.264 `.mp4` (CRF 16, `yuv420p`, `+faststart`), and always silent. Never make
+  a marketing take 4K, ProRes or with sound, and never make the cut anything but 4K ProRes.
 - **`--transparent` keeps the alpha channel**, so what a scene leaves empty stays see-through and the
   clip can sit over footage.
 - **After every render, verify it:** read the recorder's list of what was `new`, `updated`,

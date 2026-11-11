@@ -55,6 +55,11 @@ export const App: FC = () => {
   const sceneMusic = useSceneMusic({ states: scene.states, stateIndex, isPlaying, timeInState: scrub?.stateId === stateId ? scrub.time : 0 });
   // The scene's own stage when it declares one, a phone's upright frame for instance; otherwise the usual one.
   const stage = scene.stage ?? constants.STAGE;
+  // How tall a marketing take of this scene is, worked out with the layout below and read by the recorder
+  const marketingHeightRef = useRef(0);
+  // The row of steps keeps room above itself for the playhead's marker, so that room is taken out of the gap:
+  // the steps then sit MARKETING_STEPS_GAP under the stage, the same as the room under them.
+  const marketingStepsGap = constants.MARKETING_STEPS_GAP - constants.MARKETING_PLAYHEAD_MARKER_HEIGHT;
 
   // The stage is 1920×1080 unless the scene says otherwise, and only scaled to fit, so a position tuned in a small window is
   // the same position in a full-size capture. The scale is worked out against the room left once the
@@ -68,20 +73,21 @@ export const App: FC = () => {
       }
 
       const stepsHeight = switcherRef.current?.offsetHeight ?? 0;
-      const gap = switcherRef.current ? constants.PANEL_GAP : 0;
 
-      // A marketing take wants the same black on every side, so the stage spans the whole frame minus
-      // the margin and the margin is whatever is left once the row of steps and the gap have taken
-      // theirs. Worked out from the measured row, so it holds for a scene with two rows of steps too.
+      // A marketing take keeps a fixed room around everything and spans the stage across the width that is
+      // left; the frame then grows downwards by whatever the steps take — measured, so two or three rows of
+      // steps simply make a taller video. The height is kept for the recorder, which shoots exactly that.
       if (isMarketing) {
-        const ratio = stage.height / stage.width;
-        const margin = Math.max(0, (window.innerHeight - gap - stepsHeight - ratio * window.innerWidth) / (2 * (1 - ratio)));
+        const scale = (window.innerWidth - 2 * constants.MARKETING_PADDING) / stage.width;
 
-        setLayout({ margin, scale: (window.innerWidth - 2 * margin) / stage.width });
+        // Rounded up to an even number of pixels — H.264, which a marketing take is encoded to, takes no other
+        marketingHeightRef.current = Math.ceil((constants.MARKETING_PADDING * 2 + stage.height * scale + marketingStepsGap + stepsHeight) / 2) * 2;
+        setLayout({ margin: constants.MARKETING_PADDING, scale });
 
         return;
       }
 
+      const gap = switcherRef.current ? constants.PANEL_GAP : 0;
       const availableHeight = containerRef.current.clientHeight - stepsHeight - gap;
 
       setLayout({ margin: 0, scale: Math.min(containerRef.current.clientWidth / stage.width, availableHeight / stage.height) });
@@ -93,7 +99,7 @@ export const App: FC = () => {
     updateScale();
 
     return () => resizeObserver.disconnect();
-  }, [isRecording, isMarketing, stage]);
+  }, [isRecording, isMarketing, stage, marketingStepsGap]);
 
   // Playback: each state is held for exactly as long as it is held in the export, so what plays here is
   // the cut, not an impression of it.
@@ -166,7 +172,8 @@ export const App: FC = () => {
     window.__onioncut = {
       isReady: () => areFontsReady,
       stage,
-      marketingFrame: constants.MARKETING_FRAME,
+      marketingWidth: constants.MARKETING_WIDTH,
+      marketingFrame: () => ({ width: constants.MARKETING_WIDTH, height: marketingHeightRef.current }),
       states: scene.states.map((state) => ({ id: state.id, hold: state.hold })),
       render: scene.render,
       fileName: scene.fileName,
@@ -355,18 +362,18 @@ export const App: FC = () => {
   const showsSteps = !isRecording || isMarketing;
 
   return (
-    <Div className={['flex h-screen overflow-hidden', !isTransparent && 'bg-gray-950']}>
+    <Div className={['flex h-screen overflow-hidden', !isTransparent && (isMarketing ? 'bg-gray-50' : 'bg-gray-950')]}>
       {/* Not while recording: the recorder mixes the track under the cut itself, and a page photographed
           frame by frame has no clock for it to play against. */}
       {!isRecording && scene.music && <audio ref={sceneMusic.audioRef} src={scene.music} preload="auto" />}
       {!isRecording && <SceneSidebar scene={scene} isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)} />}
 
       <Div className={['flex min-w-0 flex-1 flex-col', !isRecording && !isMarketing && 'px-6 py-5']} style={isMarketing ? { padding: layout.margin } : undefined}>
-        <Div ref={containerRef} className="flex min-h-0 flex-1 flex-col items-center justify-center" style={{ gap: showsSteps ? constants.PANEL_GAP : 0 }}>
+        <Div ref={containerRef} className="flex min-h-0 flex-1 flex-col items-center justify-center" style={{ gap: showsSteps ? (isMarketing ? marketingStepsGap : constants.PANEL_GAP) : 0 }}>
           {/* Marked so the recorder can tell the scene's own transitions from the panel's. */}
           <Div
             data-stage
-            className={['relative shrink-0 overflow-hidden', !isTransparent && 'bg-stage']}
+            className={['relative shrink-0 overflow-hidden', !isTransparent && 'bg-stage', isMarketing && 'rounded-xl ring-1 ring-gray-300']}
             style={{ width: stage.width * layout.scale, height: stage.height * layout.scale }}
           >
             <Div className="absolute left-0 top-0 origin-top-left" style={{ width: stage.width, height: stage.height, transform: `scale(${layout.scale})` }}>
@@ -385,6 +392,7 @@ export const App: FC = () => {
                 stateId={stateId}
                 isPlaying={isPlaying}
                 isRecording={isRecording}
+                isMarketing={isMarketing}
                 width={stage.width * layout.scale}
                 stateRun={stateRun}
                 scrub={scrub}

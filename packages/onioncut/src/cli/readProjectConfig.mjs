@@ -1,4 +1,5 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 
 export const CONFIG_FILE = 'onioncut.config.json';
@@ -125,6 +126,10 @@ export const readProjectConfig = ({ cwd, configPath }) => {
     .flatMap((pattern) => walkPattern({ dir: projectRoot, segments: pattern.split('/').filter(Boolean) }))
     .map((dir) => resolve(projectRoot, dir));
 
+  // Where renders land unless a scene names a folder of its own: one place per project, gitignored,
+  // instead of a folder picked scene by scene or a personal one outside the project.
+  const outDir = raw.outDir === '~' || raw.outDir?.startsWith('~/') ? resolve(homedir(), raw.outDir.slice(2)) : resolve(projectRoot, raw.outDir ?? 'output');
+
   const fonts = asArray(raw.fonts);
   const stylesheet = raw.css ? resolve(projectRoot, raw.css) : null;
 
@@ -138,5 +143,5 @@ export const readProjectConfig = ({ cwd, configPath }) => {
   const packageJson = findUpwards({ startDir: cwd, fileName: 'package.json' });
   const projectPackageDir = packageJson ? dirname(packageJson) : projectRoot;
 
-  return { configFile, projectRoot, projectPackageDir, sceneDirs, sharedDirs, tailwindConfig, fonts, stylesheet };
+  return { configFile, projectRoot, projectPackageDir, outDir, sceneDirs, sharedDirs, tailwindConfig, fonts, stylesheet };
 };

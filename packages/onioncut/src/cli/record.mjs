@@ -15,6 +15,11 @@ const constants = {
   // ProRes 4444, colour at full resolution. H.264 keeps colour at half the resolution in both directions,
   // which chews up every sharp coloured edge — a paper hill over footage, a dot on dark cloth.
   EXTENSION: 'mov',
+  // A marketing take is made to be posted, not edited: X shows a video at most about 1920 wide and takes
+  // H.264 only, so it is photographed at 1× and encoded straight to an .mp4 that uploads as it is — a
+  // quarter of the pixels of a 4K take, so it also renders several times faster.
+  MARKETING_SCALE: 1,
+  MARKETING_EXTENSION: 'mp4',
   // The scene's music, when it has any, fades out over the last this many seconds of the full cut, so
   // the cut ends rather than stops.
   MUSIC_FADE_OUT: 1.5,
@@ -301,6 +306,8 @@ const transitionEnd = ({ page, stageOnly }) => {
 
 export const runRecord = async ({ config, flags }) => {
   const args = parseArgs(flags);
+  const scale = args.marketing ? constants.MARKETING_SCALE : constants.SCALE;
+  const extension = args.marketing ? constants.MARKETING_EXTENSION : constants.EXTENSION;
 
   console.log('Building…');
 
@@ -317,7 +324,7 @@ export const runRecord = async ({ config, flags }) => {
   const browser = await puppeteer.launch({
     executablePath: findChrome(),
     headless: true,
-    args: ['--no-sandbox', '--hide-scrollbars', '--disable-lcd-text', `--force-device-scale-factor=${constants.SCALE}`, '--font-render-hinting=none'],
+    args: ['--no-sandbox', '--hide-scrollbars', '--disable-lcd-text', `--force-device-scale-factor=${scale}`, '--font-render-hinting=none'],
   });
 
   let renderedDir = null;
@@ -331,11 +338,31 @@ export const runRecord = async ({ config, flags }) => {
       await page.goto(`${baseUrl}/?scene=${args.scene}&recording=1`, { waitUntil: 'networkidle0' });
       await page.waitForFunction(() => window.__onioncut?.isReady() === true, { timeout: 30_000 });
 
-      const measured = await page.evaluate(() => ({ stage: window.__onioncut.stage, marketingFrame: window.__onioncut.marketingFrame }));
+      const stage = await page.evaluate(() => window.__onioncut.stage);
+
+      if (!args.marketing) {
+        await page.close();
+
+        return { stage, marketingFrame: null };
+      }
+
+      // A marketing take is as tall as its steps make it, so the page is laid out at the take's width first
+      // — fonts loaded, because the width of each label decides where the rows break — and asked how tall
+      // that came out.
+      const marketingWidth = await page.evaluate(() => window.__onioncut.marketingWidth);
+
+      await page.setViewport({ width: marketingWidth, height: marketingWidth, deviceScaleFactor: scale });
+      await page.goto(`${baseUrl}/?scene=${args.scene}&recording=1&marketing=1`, { waitUntil: 'networkidle0' });
+      await page.waitForFunction(() => window.__onioncut?.isReady() === true, { timeout: 30_000 });
+      await page.evaluate(() => document.fonts.ready);
+      await new Promise((resolvePromise) => setTimeout(resolvePromise, 500));
+
+      const marketingFrame = await page.evaluate(() => window.__onioncut.marketingFrame());
 
       await page.close();
+      console.log(`  marketing frame ${marketingFrame.width}×${marketingFrame.height}`);
 
-      return measured;
+      return { stage, marketingFrame };
     };
 
     const measuredFrames = await readFrames();
@@ -354,7 +381,7 @@ export const runRecord = async ({ config, flags }) => {
       page.on('error', (error) => console.error(`  page crashed: ${error.message}`));
       page.on('pageerror', (error) => console.error(`  page error: ${error.message}`));
 
-      await page.setViewport({ width: frame.width, height: frame.height, deviceScaleFactor: constants.SCALE });
+      await page.setViewport({ width: frame.width, height: frame.height, deviceScaleFactor: scale });
       await page.goto(
         `${baseUrl}/?scene=${args.scene}&recording=1${stateId ? `&state=${encodeURIComponent(stateId)}` : ''}${args.marketing ? '&marketing=1' : ''}${args.transparent ? '&transparent=1' : ''}`,
         { waitUntil: 'networkidle0' },
@@ -385,15 +412,18 @@ export const runRecord = async ({ config, flags }) => {
 
     // What the scene wants made of itself and where — declared in its definition, read off the page.
     const render = await firstPage.evaluate(() => window.__onioncut.render);
-    // A marketing take is not part of any edit, so it has no business sitting next to the clips the cut
-    // is built from — it goes straight to the desktop, where it is picked up and posted.
+    // Everything a render writes lands under the project's outDir unless the scene names a folder of its
+    // own — a long video keeps its clips beside its script. A marketing take is not part of any edit, so
+    // it gets a folder of its own there rather than sitting next to the clips the cut is built from.
     // --out is for checking a render without touching the folder an edit is already linked to. It
     // never removes anything, for the same reason --only does not: what is in there is not this run's.
     const outputDir = args.out
       ? resolveOutputPath({ outputPath: args.out, projectRoot: config.projectRoot })
       : args.marketing
-        ? resolve(homedir(), 'Desktop')
-        : resolveOutputPath({ outputPath: render.outputPath, projectRoot: config.projectRoot });
+        ? join(config.outDir, 'marketing')
+        : render.outputPath
+          ? resolveOutputPath({ outputPath: render.outputPath, projectRoot: config.projectRoot })
+          : join(config.outDir, args.scene);
     // A marketing take is one video of the tool in use, whatever the scene declares: step clips are for
     // cutting, and nobody cuts this one.
     const variants = args.marketing ? { fullCut: true, stepClips: false } : render.variants;
@@ -414,19 +444,23 @@ export const runRecord = async ({ config, flags }) => {
     // may carry a copyright claim is not worth getting it muted or taken down.
     const music = args.marketing ? null : await firstPage.evaluate(() => window.__onioncut.music ?? null);
     const name = args.marketing ? `${fileName}-marketing` : fileName;
-    const fullName = `${name}.${constants.EXTENSION}`;
+    const fullName = `${name}.${extension}`;
     const stepName = ({ stateId, index }) => {
-      return `${name}-step-${index + 1}-${slugify(stateId)}.${constants.EXTENSION}`;
+      return `${name}-step-${index + 1}-${slugify(stateId)}.${extension}`;
     };
 
     console.log(
-      `Recording ${args.scene}: ${states.map((state) => `${state.id} ${(state.frames / constants.FPS).toFixed(2)}s`).join(', ')} = ${(totalFrames / constants.FPS).toFixed(1)}s at ${frame.width * constants.SCALE}×${frame.height * constants.SCALE}`,
+      `Recording ${args.scene}: ${states.map((state) => `${state.id} ${(state.frames / constants.FPS).toFixed(2)}s`).join(', ')} = ${(totalFrames / constants.FPS).toFixed(1)}s at ${frame.width * scale}×${frame.height * scale}`,
     );
 
     // prores_ks is the software encoder and the one the output has always come from. On Apple silicon
     // there is also a ProRes block in the chip, reached through prores_videotoolbox — same codec and
     // same 4444 profile, a different encoder, so the file is not byte for byte the same one.
     const encoderArguments = () => {
+      if (args.marketing) {
+        return ['-c:v', 'libx264', '-preset', 'slow', '-crf', '16', '-pix_fmt', 'yuv420p', '-movflags', '+faststart'];
+      }
+
       if (args.encoder === 'hardware') {
         return [
           '-c:v', 'prores_videotoolbox',
@@ -522,10 +556,13 @@ export const runRecord = async ({ config, flags }) => {
     };
 
     const sync = ({ removeStale }) => {
-      const results = syncRenders({ fileName: name, renderedDir, outputDir, removeStale, extension: constants.EXTENSION });
+      const results = syncRenders({ fileName: name, renderedDir, outputDir, removeStale, extension });
 
-      console.log(`\nDone in ${elapsed()} — ${screenshotCount} screenshots for ${frameCount} frames → ${outputDir}`);
-      results.forEach((result) => console.log(`  ${result.status.padEnd(9)}  ${result.name}`));
+      console.log(`\nDone in ${elapsed()} — ${screenshotCount} screenshots for ${frameCount} frames`);
+      // Every file by its full path, and the folder last on a line of its own: whoever ran the render — a
+      // person or an agent — reads where it went off the end of the output instead of working it out.
+      results.forEach((result) => console.log(`  ${result.status.padEnd(9)}  ${join(outputDir, result.name)}`));
+      console.log(`\nSaved to ${outputDir}`);
     };
 
     if (args.only) {

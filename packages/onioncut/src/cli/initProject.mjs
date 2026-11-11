@@ -10,7 +10,8 @@ const TOOLS_DIR = 'tools/onioncut';
 const configContents = `{
   "scenes": ["${TOOLS_DIR}/scenes/*", "videos/*/animations/*"],
   "shared": ["${TOOLS_DIR}/shared"],
-  "tailwind": "${TOOLS_DIR}/tailwind.config.ts"
+  "tailwind": "${TOOLS_DIR}/tailwind.config.ts",
+  "outDir": "output"
 }
 `;
 
@@ -52,6 +53,8 @@ const steps = ({ tailwindPath, sharedName, sharedRelative }) => {
     `Components the videos share go in ${sharedRelative}, imported as "#${sharedName}/<name>".`,
     `Let TypeScript and the editor in on it, in tsconfig.json:`,
     `    "paths": { "#${sharedName}/*": ["${sharedRelative}/*"] }`,
+    ``,
+    `Renders land in output/ ("outDir" in ${CONFIG_FILE}). Add it to .gitignore.`,
     ``,
     `Add the scripts to package.json:`,
     `    "video:dev": "onioncut dev", "video:record": "onioncut record"`,

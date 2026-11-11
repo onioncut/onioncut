@@ -12,7 +12,6 @@ export const sceneDefinitions = defineScenes({
       states,
       Scene,
       render: {
-        outputPath: 'output/cards',
         variants: { fullCut: true, stepClips: true },
       },
     },
