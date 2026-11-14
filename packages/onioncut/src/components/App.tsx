@@ -1,6 +1,7 @@
 import { FC, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { fontSpecs } from 'virtual:onioncut-fonts';
+import { Filmstrip } from './Filmstrip';
 import { SceneSidebar } from './SceneSidebar';
 import { StateSwitcher } from './StateSwitcher';
 import { constants } from '../constants';
@@ -50,6 +51,7 @@ export const App: FC = () => {
   // picture where it actually is rather than at the start of the step.
   const playedSince = useRef({ at: 0, from: 0 });
   const [layout, setLayout] = useState({ scale: 1, margin: 0 });
+  const seekRef = useRef<(position: ScrubPosition) => void>(() => undefined);
 
   const stateIndex = scene.states.findIndex((state) => state.id === stateId);
   const sceneMusic = useSceneMusic({ states: scene.states, stateIndex, isPlaying, timeInState: scrub?.stateId === stateId ? scrub.time : 0 });
@@ -185,6 +187,7 @@ export const App: FC = () => {
           setStateId(nextStateId);
           setStateRun((currentRun) => currentRun + 1);
         }),
+      seek: (position: ScrubPosition) => seekRef.current(position),
     };
   }, [areFontsReady, scene, stage]);
 
@@ -252,6 +255,12 @@ export const App: FC = () => {
     },
     [scene.key, scene.states, stageAnimations],
   );
+
+  // The recorder API is set up before seekTo exists, and seekTo changes with the scene; the API reaches
+  // it through this.
+  useEffect(() => {
+    seekRef.current = seekTo;
+  }, [seekTo]);
 
   // Leaving a scrubbed step lands its animations first, so the next step starts from the pose the cut
   // would have left behind rather than from half a transition.
@@ -359,7 +368,8 @@ export const App: FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleStateChange, isPlaying, restartState, scene.states, scrub, seekTo, stateId, stateIndex]);
 
-  const showsSteps = !isRecording || isMarketing;
+  // The row of steps is the marketing take's only — in the preview the steps are a lane of the timeline.
+  const showsSteps = isMarketing;
 
   return (
     <Div className={['flex h-screen overflow-hidden', !isTransparent && (isMarketing ? 'bg-gray-50' : 'bg-gray-950')]}>
@@ -368,40 +378,48 @@ export const App: FC = () => {
       {!isRecording && scene.music && <audio ref={sceneMusic.audioRef} src={scene.music} preload="auto" />}
       {!isRecording && <SceneSidebar scene={scene} isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)} />}
 
-      <Div className={['flex min-w-0 flex-1 flex-col', !isRecording && !isMarketing && 'px-6 py-5']} style={isMarketing ? { padding: layout.margin } : undefined}>
-        <Div ref={containerRef} className="flex min-h-0 flex-1 flex-col items-center justify-center" style={{ gap: showsSteps ? (isMarketing ? marketingStepsGap : constants.PANEL_GAP) : 0 }}>
-          {/* Marked so the recorder can tell the scene's own transitions from the panel's. */}
-          <Div
-            data-stage
-            className={['relative shrink-0 overflow-hidden', !isTransparent && 'bg-stage', isMarketing && 'rounded-xl ring-1 ring-gray-300']}
-            style={{ width: stage.width * layout.scale, height: stage.height * layout.scale }}
-          >
-            <Div className="absolute left-0 top-0 origin-top-left" style={{ width: stage.width, height: stage.height, transform: `scale(${layout.scale})` }}>
-              <scene.Scene stateId={stateId} isTransparent={isTransparent} />
+      <Div className="flex min-w-0 flex-1 flex-col" style={isMarketing ? { padding: layout.margin } : undefined}>
+        <Div className={['flex min-h-0 flex-1 flex-col', !isRecording && !isMarketing && 'px-6 py-5']}>
+          <Div ref={containerRef} className="flex min-h-0 flex-1 flex-col items-center justify-center" style={{ gap: isMarketing ? marketingStepsGap : isRecording ? 0 : constants.PANEL_GAP }}>
+            {/* Marked so the recorder can tell the scene's own transitions from the panel's. Never selectable: a drag
+                or a double-click that starts on the stage would otherwise paint it over in the selection's blue. */}
+            <Div
+              data-stage
+              className={['relative shrink-0 select-none overflow-hidden', !isTransparent && 'bg-stage', isMarketing && 'rounded-xl ring-1 ring-gray-300']}
+              style={{ width: stage.width * layout.scale, height: stage.height * layout.scale }}
+            >
+              <Div className="absolute left-0 top-0 origin-top-left" style={{ width: stage.width, height: stage.height, transform: `scale(${layout.scale})` }}>
+                <scene.Scene stateId={stateId} isTransparent={isTransparent} />
+              </Div>
             </Div>
-          </Div>
 
-          {/* The stage keeps its height and the steps take what is left, scrolling inside it. A video of
-              sixty beats wraps the row into a dozen lines, and a row that cannot shrink pushes the stage
-              clean off the top of the window — the scene is then simply not there to look at. The
-              marketing take keeps the old behaviour: its frame is a fixed size the recorder measures. */}
-          {showsSteps && (
-            <Div ref={switcherRef} className={['flex w-full justify-center', isMarketing ? 'shrink-0' : 'min-h-[88px] max-h-[40%] shrink overflow-y-auto']}>
-              <StateSwitcher
-                scene={scene}
-                stateId={stateId}
-                isPlaying={isPlaying}
-                isRecording={isRecording}
-                isMarketing={isMarketing}
-                width={stage.width * layout.scale}
-                stateRun={stateRun}
-                scrub={scrub}
-                onStateChange={handleStateChange}
-                onScrub={seekTo}
-              />
-            </Div>
-          )}
+            {/* The marketing take's row of steps: its frame is a fixed size the recorder measures. */}
+            {showsSteps && (
+              <Div ref={switcherRef} className="flex w-full shrink-0 justify-center">
+                <StateSwitcher
+                  scene={scene}
+                  stateId={stateId}
+                  isPlaying={isPlaying}
+                  isRecording={isRecording}
+                  isMarketing={isMarketing}
+                  width={stage.width * layout.scale}
+                  stateRun={stateRun}
+                  scrub={scrub}
+                  onStateChange={handleStateChange}
+                  onScrub={seekTo}
+                />
+              </Div>
+            )}
+          </Div>
         </Div>
+
+        {/* The timeline, along the bottom edge of the window and across its whole width, the way an editor
+            keeps its timeline under the viewer. */}
+        {!isRecording && (
+          <Div className="shrink-0 border-t border-gray-800">
+            <Filmstrip scene={scene} stateId={stateId} isPlaying={isPlaying} scrub={scrub} onStateChange={handleStateChange} onSeek={seekTo} />
+          </Div>
+        )}
       </Div>
     </Div>
   );

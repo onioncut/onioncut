@@ -231,7 +231,7 @@ H.264 `.mp4` in `<outDir>/marketing/`, as tall as its row of steps makes it.
 - Node 20+ and pnpm
 - **ffmpeg** on the `PATH` (`brew install ffmpeg`)
 - **Chrome, Chromium or Edge** installed. The recorder drives the browser already on the machine; the
-  paths it looks in are `CHROME_CANDIDATES` at the top of `packages/onioncut/src/cli/record.mjs`, and they are macOS
+  paths it looks in are `CHROME_CANDIDATES` at the top of `packages/onioncut/src/cli/findChrome.mjs`, and they are macOS
   paths — on Linux or Windows, add the machine's own.
 - Port 5200 for the preview. The recorder takes 5201 or the next one free.
 
@@ -241,8 +241,8 @@ H.264 `.mp4` in `<outDir>/marketing/`, as tall as its row of steps makes it.
   that already existed reach the project, a new file does not.
 - **A shared component outside the scanned folders loses its Tailwind classes** and the scene records
   without it, with no error.
-- **The step timeline is built for a handful of steps.** A video of sixty beats wraps it into a dozen
-  rows; it scrolls instead of pushing the stage off the window, but it is cramped.
+- **The timeline photographs the scene in a browser of its own.** Its frames come from the Chrome the
+  recorder uses, so the preview needs one too; without it the timeline still works, only without frames.
 - **A render photographs the page one frame at a time**, which is why the result is exact. The clips
   are recorded one after another, the full cut on a single page playing the states in order, as the
   preview does.

@@ -273,7 +273,7 @@ fallback that produces a worse file is worse than an error.
 - **`ffmpeg` or `ffprobe` not on the PATH** — nothing can be encoded or checked.
   `brew install ffmpeg` on macOS, the distribution's package on Linux.
 - **"No Chrome found"** — the recorder drives the browser already on the machine rather than
-  downloading one. It looks in `CHROME_CANDIDATES` at the top of `packages/onioncut/src/cli/record.mjs`, and those paths
+  downloading one. It looks in `CHROME_CANDIDATES` at the top of `packages/onioncut/src/cli/findChrome.mjs`, and those paths
   are macOS ones. Offer to install Chrome, or to add the machine's own path to that list — do not
   switch the project to full `puppeteer` to dodge it.
 - **`node_modules` missing or out of date** — `pnpm install`. If the package manager itself is not

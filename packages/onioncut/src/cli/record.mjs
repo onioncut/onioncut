@@ -5,6 +5,7 @@ import { extname, join, resolve } from 'node:path';
 import puppeteer from 'puppeteer-core';
 import { preview } from 'vite';
 import { createViteConfig } from './createViteConfig.mjs';
+import { findChrome } from './findChrome.mjs';
 
 const constants = {
   FPS: 30,
@@ -22,21 +23,6 @@ const constants = {
   // The scene's music, when it has any, fades out over the last this many seconds of the full cut, so
   // the cut ends rather than stops.
   MUSIC_FADE_OUT: 1.5,
-  // The browser already on the machine, rather than one downloaded for the occasion. macOS first,
-  // then the usual Linux locations — a render can run on whichever machine is free, and CHROME_PATH
-  // names one these do not cover.
-  CHROME_CANDIDATES: [
-    process.env.CHROME_PATH,
-    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-    '/Applications/Chromium.app/Contents/MacOS/Chromium',
-    '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
-    '/usr/bin/google-chrome',
-    '/usr/bin/google-chrome-stable',
-    '/usr/bin/chromium',
-    '/usr/bin/chromium-browser',
-    '/snap/bin/chromium',
-    '/usr/bin/microsoft-edge',
-  ].filter(Boolean),
 };
 
 // A step's name in a clip's file name: lowercase, letters and digits, dashes between.
@@ -95,7 +81,8 @@ const decodedHash = (file) => {
 };
 
 // Lays the scene's music under a finished cut: the picture copied as it is, the track cut to the length
-// of the video and faded out over its last MUSIC_FADE_OUT seconds. Uncompressed 24-bit PCM, the audio a
+// of the video and faded out over its last MUSIC_FADE_OUT seconds — unless the track is no longer than the
+// cut, which means it was made to end with it, on its own ending, and a fade would only muffle that. Uncompressed 24-bit PCM, the audio a
 // ProRes master carries — the picture is not compressed for the edit's sake, and neither is the sound.
 const addMusic = async ({ videoPath, musicUrl, seconds }) => {
   const response = await fetch(musicUrl);
@@ -108,6 +95,10 @@ const addMusic = async ({ videoPath, musicUrl, seconds }) => {
   const mixedPath = `${videoPath}.mixed.${constants.EXTENSION}`;
 
   writeFileSync(musicPath, Buffer.from(await response.arrayBuffer()));
+
+  const musicSeconds = Number(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', musicPath], { encoding: 'utf8' }));
+  const fade = musicSeconds > seconds ? ['-af', `afade=t=out:st=${Math.max(0, seconds - constants.MUSIC_FADE_OUT)}:d=${constants.MUSIC_FADE_OUT}`] : [];
+
   execFileSync('ffmpeg', [
     '-v', 'error',
     '-y',
@@ -118,7 +109,7 @@ const addMusic = async ({ videoPath, musicUrl, seconds }) => {
     '-c:v', 'copy',
     '-c:a', 'pcm_s24le',
     '-ar', '48000',
-    '-af', `afade=t=out:st=${Math.max(0, seconds - constants.MUSIC_FADE_OUT)}:d=${constants.MUSIC_FADE_OUT}`,
+    ...fade,
     '-t', String(seconds),
     mixedPath,
   ]);
@@ -171,16 +162,6 @@ const syncRenders = ({ fileName, renderedDir, outputDir, removeStale, extension 
   stale.forEach((name) => unlinkSync(join(outputDir, name)));
 
   return [...written, ...stale.map((name) => ({ name, status: 'removed' }))];
-};
-
-const findChrome = () => {
-  const found = constants.CHROME_CANDIDATES.find((candidate) => existsSync(candidate));
-
-  if (!found) {
-    throw new Error(`No Chrome found. Looked in:\n${constants.CHROME_CANDIDATES.join('\n')}`);
-  }
-
-  return found;
 };
 
 const writeFrame = ({ ffmpegProcess, buffer }) => {

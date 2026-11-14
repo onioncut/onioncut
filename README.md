@@ -26,7 +26,7 @@ something to copy from:
 - **ffmpeg** on the `PATH` (`brew install ffmpeg`)
 - **Chrome, Chromium or Edge** installed. The recorder drives the browser already on the machine
   through `puppeteer-core` rather than downloading one of its own; the paths it looks in are
-  `CHROME_CANDIDATES` at the top of `packages/onioncut/src/cli/record.mjs`, and they are macOS paths — on Linux or
+  `CHROME_CANDIDATES` at the top of `packages/onioncut/src/cli/findChrome.mjs`, and they are macOS paths — on Linux or
   Windows, change them.
 
 **Setting it up in another repository is written out in [`INSTRUCTIONS.md`](https://github.com/onioncut/onioncut/blob/main/INSTRUCTIONS.md)** —
@@ -115,8 +115,11 @@ to the next; give feedback against a state ("the cards sit too high in 3"), neve
   does, and a playhead runs across the active step as its hold runs down. What plays here is the cut,
   not an impression of it. Picking a state by hand stops playback.
 
-Each step in the timeline is as wide as it is long, so the row reads as the timeline of the picture
-above it.
+Along the bottom of the window runs a timeline in the manner of an editor's: a ruler of seconds, the
+steps — each as long as it holds, a click opens it — and frames of the scene photographed by the dev
+server. A click or a drag puts the playhead there and holds the stage at that moment; ⌘ or Ctrl with the
+wheel, a pinch or the slider zooms, any other wheel scrolls it, and its top edge drags it taller. The
+timecode button copies the moment and its frame to the clipboard. Height and zoom are remembered.
 
 ## Scenes
 

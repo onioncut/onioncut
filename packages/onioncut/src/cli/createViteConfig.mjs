@@ -3,6 +3,7 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/postcss';
+import { filmstripPlugin } from './filmstripPlugin.mjs';
 import { scenesPlugin } from './scenesPlugin.mjs';
 import { projectHeadPlugin } from './projectHeadPlugin.mjs';
 import { projectDepsPlugin } from './projectDepsPlugin.mjs';
@@ -54,6 +55,7 @@ export const createViteConfig = async ({ config, port, host }) => {
       scenesPlugin({ sceneDirs: config.sceneDirs }),
       projectDepsPlugin({ projectPackageDir: config.projectPackageDir }),
       projectHeadPlugin({ packageRoot, fonts: config.fonts, stylesheet: config.stylesheet }),
+      filmstripPlugin(),
     ],
     css: {
       postcss: {

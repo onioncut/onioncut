@@ -1,7 +1,8 @@
 import { SceneRenderDefinition } from './SceneRenderDefinition';
+import { ScrubPosition } from './ScrubPosition';
 
-// The surface the recorder script talks to. It only ever steps states — the animation itself is CSS,
-// caught and stepped by the recorder rather than by anything in here.
+// The surface the recorder script talks to. It steps states — the animation itself is CSS, caught and
+// stepped by the recorder rather than by anything in here — and the filmstrip seeks through it.
 export type OnioncutRecordApi = {
   isReady: () => boolean;
   // The size the scene is laid out against, and the frame a marketing take is shot in. The recorder reads
@@ -18,6 +19,9 @@ export type OnioncutRecordApi = {
   // The scene's music as a URL on the preview server, for the recorder to fetch and mix under the cut.
   music?: string;
   setState: (stateId: string) => void;
+  // Hold the stage at a moment inside a step, the way scrubbing the timeline does. The preview's filmstrip
+  // photographs the scene through it.
+  seek: (position: ScrubPosition) => void;
 };
 
 // An interface, not a type: extending the global Window is only possible through declaration merging.

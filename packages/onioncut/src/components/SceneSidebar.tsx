@@ -58,7 +58,7 @@ export const SceneSidebar: FC<SceneSidebarProps> = ({ scene, isOpen, onToggle })
   const [showsAllScenes] = useState(() => new URLSearchParams(window.location.search).get('all') === '1' || !hasSeveralScenes(group));
 
   return (
-    <Div className="flex h-full shrink-0 items-start font-sans">
+    <Div className="relative flex h-full shrink-0 items-start font-sans">
       {/* Collapsing a grid column from 1fr to 0fr slides the sidebar shut without anyone having to know
           how wide it is. */}
       <Div className="grid h-full transition-[grid-template-columns] duration-300 ease-in-out" style={{ gridTemplateColumns: isOpen ? '1fr' : '0fr' }}>
@@ -121,12 +121,13 @@ export const SceneSidebar: FC<SceneSidebarProps> = ({ scene, isOpen, onToggle })
         </Div>
       </Div>
 
-      {/* Stays put when the sidebar is shut, or there would be no way back. */}
+      {/* Stays put when the sidebar is shut, or there would be no way back. It hangs over the preview's edge
+          rather than taking a strip of its own, so the timeline along the bottom runs right up to the sidebar. */}
       <button
         type="button"
         onClick={onToggle}
         title={isOpen ? 'Hide the sidebar' : 'Show the sidebar'}
-        className="mt-5 rounded-r-lg border border-l-0 border-gray-800 bg-gray-900 px-1.5 py-4 text-sm leading-none text-gray-500 transition-colors hover:text-gray-200"
+        className="absolute left-full top-5 z-10 rounded-r-lg border border-l-0 border-gray-800 bg-gray-900 px-1.5 py-4 text-sm leading-none text-gray-500 transition-colors hover:text-gray-200"
       >
         {isOpen ? '‹' : '›'}
       </button>
